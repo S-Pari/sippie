@@ -414,20 +414,21 @@ function getLog() { return JSON.parse(localStorage.getItem('sp_log_' + tod())) |
 function setLog(l) { localStorage.setItem('sp_log_' + tod(), JSON.stringify(l)); }
 function total() { return getLog().reduce((s, e) => s + e.oz, 0); }
 
-// ── day reset: check every time app becomes visible ──
-// This catches midnight crossings even when the app stays in memory overnight.
-// The user just has to open Sippie and it will detect the new date immediately.
-let _lastDate = tod();
-document.addEventListener('visibilitychange', function () {
-  if (document.visibilityState === 'visible') {
-    const now = tod();
-    if (now !== _lastDate) {
-      _lastDate = now;
-      save();   // archive yesterday's data first
-      render(); // then re-render with fresh empty day
-      showToast('Good morning! Fresh day started 💜');
-    }
+// -- day reset --
+// Stores last-open date in localStorage so it survives iOS fully killing the app.
+// checkDayReset() runs on every page load AND every visibility change,
+// so opening the app fresh each morning always triggers the new-day detection.
+function checkDayReset() {
+  const stored = localStorage.getItem('sp_last_date');
+  const now = tod();
+  localStorage.setItem('sp_last_date', now);
+  if (stored && stored !== now) {
+    render();
+    showToast('Good morning! Fresh day started 💜');
   }
+}
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible') checkDayReset();
 });
 
 function save() {
@@ -788,11 +789,12 @@ document.addEventListener('click', function (e) {
   if (btn && !btn.contains(e.target)) document.getElementById('badge-tooltip').classList.remove('show');
 });
 
-// ── init ──
+// -- init --
 document.getElementById('s-goal').value = goal;
 document.getElementById('s-interval').value = intv;
 buildTimeSelects();
 if (typeof Notification !== 'undefined' && Notification.permission === 'granted') scheduleReminders();
+checkDayReset(); // check for new day on every load
 render();
 </script>
 </body>
